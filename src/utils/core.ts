@@ -38,6 +38,7 @@ interface Message {
 interface ConversationData {
     created_at: string;
     chat_messages: Message[];
+    name: string;
 }
 
 // Configuration for the export
@@ -136,7 +137,7 @@ function formatConversation(data: ConversationData, config: Config): string {
     }
     
     if (config.exportFormat === 'markdown') {
-        let output = `# Claude Chat Export\n\n`;
+        let output = `# ${data.name}\n\n`;
         output += `*Exported at: ${formatTimestamp(data.created_at)}*\n\n---\n\n`;
         
         data.chat_messages.forEach(message => {
@@ -156,15 +157,51 @@ function formatConversation(data: ConversationData, config: Config): string {
     return output;
 }
 
-// Download the formatted content
-function downloadContent(content: string, format: 'json' | 'readable' | 'markdown'): void {
+// 辅助函数：将字符串转换为合法的文件名
+function sanitizeFilename(name: string): string {
+    if (!name) return 'untitled';
+    
+    // 先处理特殊字符
+    const sanitized = name
+        // 只替换文件系统不安全的字符为下划线
+        .replace(/[\x00-\x1f\x7f"'`\/\\\|\?\*\:<>]/g, '_')  // 控制字符和特殊字符
+        .replace(/\s+/g, '_')  // 空格转换为单个下划线
+        .replace(/^_+|_+$/g, '')  // 移除首尾下划线
+        .replace(/_+/g, '_');  // 多个连续下划线转换为单个下划线
+    
+    // 如果处理后为空，返回 untitled
+    return sanitized || 'untitled';
+}
+
+// 修改 downloadContent 函数，添加更多错误处理
+function downloadContent(content: string, format: 'json' | 'readable' | 'markdown', data: ConversationData): void {
+    console.log('Downloading with data:', data);
+    
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    
+    // 格式化日期
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, '_');
+    console.log('Formatted date:', date);
+    
+    // 格式化对话名称
+    const rawName = data.name || 'untitled';
+    console.log('Raw name:', rawName);
+    
+    let sanitizedName = sanitizeFilename(rawName);
+    console.log('Sanitized name:', sanitizedName);
+    
+    // 构建文件名
+    const filename = `claude_${date}_${sanitizedName}`;
+    console.log('Generated filename:', filename);
+    
     const extension = format === 'json' ? 'json' : format === 'markdown' ? 'md' : 'txt';
+    const fullFilename = `${filename}.${extension}`;
+    console.log('Full filename:', fullFilename);
+    
     a.href = url;
-    a.download = `claude-chat-${timestamp}.${extension}`;
+    a.download = fullFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -224,10 +261,17 @@ async function exportConversation(): Promise<void> {
         }
 
         const data: ConversationData = await response.json();
+        console.log('Fetched conversation data:', data); // 添加日志，检查数据结构
+        
+        // 确保 name 存在
+        if (!data.name) {
+            console.log('No name found in data, using default');
+            data.name = 'untitled_conversation';
+        }
         
         // Format and download the conversation
         const formatted = formatConversation(data, config);
-        downloadContent(formatted, config.exportFormat);
+        downloadContent(formatted, config.exportFormat, data);
         
         console.log('Export completed successfully!');
     } catch (error) {
