@@ -13,6 +13,15 @@ interface Sender {
 interface Content {
     type: string;
     text?: string;
+    artifact?: {
+        mime_type: string;
+        content: string;
+    };
+    name?: string;
+    input?: {
+        content: string;
+        type: string;
+    };
 }
 
 interface Attachment {
@@ -57,6 +66,8 @@ function formatMessage(message: Message, config: Config): string {
     message.content.forEach(content => {
         if (content.type === 'text' && content.text) {
             formatted += content.text;
+        } else if (content.type === 'artifact' && content.artifact) {
+            formatted += '\n\n[Code Block]:\n' + content.artifact.content;
         }
     });
     
@@ -83,12 +94,30 @@ function formatMessageMarkdown(message: Message): string {
     const sender = message.sender.charAt(0).toUpperCase() + message.sender.slice(1);
     formatted += `**${sender}**: `;
     
+    // 处理消息内容
     message.content.forEach(content => {
         if (content.type === 'text' && content.text) {
             formatted += content.text;
+        } else if (content.type === 'artifact' && content.artifact) {
+            // 添加代码块，使用 artifact 的内容
+            formatted += '\n\n```';
+            if (content.artifact.mime_type.includes('javascript')) {
+                formatted += 'javascript';
+            } else if (content.artifact.mime_type.includes('python')) {
+                formatted += 'python';
+            } else if (content.artifact.mime_type.includes('json')) {
+                formatted += 'json';
+            }
+            formatted += '\n' + content.artifact.content + '\n```\n';
+        } else if (content.type === 'tool_use' && content.input) {
+            // 处理 tool_use，比如 Mermaid 图表
+            if (content.input.type === 'application/vnd.ant.mermaid') {
+                formatted += '\n\n```mermaid\n' + content.input.content + '\n```\n';
+            }
         }
     });
     
+    // 处理附件内容（保持原有功能）
     if (config.includeFileContent && message.attachments && message.attachments.length > 0) {
         message.attachments.forEach(attachment => {
             if (attachment.extracted_content) {
