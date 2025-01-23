@@ -161,15 +161,12 @@ function formatConversation(data: ConversationData, config: Config): string {
 function sanitizeFilename(name: string): string {
     if (!name) return 'untitled';
     
-    // 先处理特殊字符
+    // 只過濾最基本的不安全字符
     const sanitized = name
-        // 只替换文件系统不安全的字符为下划线
-        .replace(/[\x00-\x1f\x7f"'`\/\\\|\?\*\:<>]/g, '_')  // 控制字符和特殊字符
-        .replace(/\s+/g, '_')  // 空格转换为单个下划线
-        .replace(/^_+|_+$/g, '')  // 移除首尾下划线
-        .replace(/_+/g, '_');  // 多个连续下划线转换为单个下划线
+        .replace(/["'\\\/]/g, '_')  // 只過濾 " ' \ / 字符
+        .replace(/\s+/g, '_')       // 空格轉換為單個下劃線
+        .replace(/_+/g, '_');       // 多個連續下劃線轉換為單個下劃線
     
-    // 如果处理后为空，返回 untitled
     return sanitized || 'untitled';
 }
 
