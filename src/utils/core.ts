@@ -1,17 +1,50 @@
+// Types definitions
+interface Config {
+    includeTimestamps: boolean;
+    includeFileContent: boolean;
+    exportFormat: 'readable' | 'json';
+}
+
+interface Sender {
+    role: string;
+    name?: string;
+}
+
+interface Content {
+    type: string;
+    text?: string;
+}
+
+interface Attachment {
+    extracted_content?: string;
+}
+
+interface Message {
+    created_at: string;
+    sender: string;
+    content: Content[];
+    attachments?: Attachment[];
+}
+
+interface ConversationData {
+    created_at: string;
+    chat_messages: Message[];
+}
+
 // Configuration for the export
-const config = {
+const config: Config = {
     includeTimestamps: true,
     includeFileContent: true,
-    exportFormat: 'readable' // 'readable' or 'json'
+    exportFormat: 'readable'
 };
 
 // Format a readable timestamp
-function formatTimestamp(isoString) {
+function formatTimestamp(isoString: string): string {
     return new Date(isoString).toLocaleString();
 }
 
 // Format a single message
-function formatMessage(message, config) {
+function formatMessage(message: Message, config: Config): string {
     let formatted = '';
     
     if (config.includeTimestamps) {
@@ -22,13 +55,13 @@ function formatMessage(message, config) {
     
     // Add message content
     message.content.forEach(content => {
-        if (content.type === 'text') {
+        if (content.type === 'text' && content.text) {
             formatted += content.text;
         }
     });
     
     // Add file content if present and enabled
-    if (config.includeFileContent && message.attachments && message.attachments.length > 0) {
+    if (config.includeFileContent && message.attachments?.length > 0) {
         message.attachments.forEach(attachment => {
             if (attachment.extracted_content) {
                 formatted += '\n\n[Attached File Content]:\n' + attachment.extracted_content;
@@ -40,7 +73,7 @@ function formatMessage(message, config) {
 }
 
 // Format the entire conversation
-function formatConversation(data, config) {
+function formatConversation(data: ConversationData, config: Config): string {
     if (config.exportFormat === 'json') {
         return JSON.stringify(data, null, 2);
     }
@@ -56,7 +89,7 @@ function formatConversation(data, config) {
 }
 
 // Download the formatted content
-function downloadContent(content, format) {
+function downloadContent(content: string, format: 'json' | 'readable'): void {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -70,13 +103,15 @@ function downloadContent(content, format) {
 }
 
 // Function to extract a snippet based on starting and ending indices
-function extractSnippet(startIndex, endIndex) {
+function extractSnippet(startIndex: number, endIndex: number): string | null {
     // Select all <script nonce> tags
     const scriptTags = document.querySelectorAll('script[nonce]');
 
     // Iterate through each script tag and check for "lastActiveOrg"
-    for (let script of scriptTags) {
+    for (const script of scriptTags) {
         const content = script.textContent;
+        if (!content) continue;
+        
         console.log(content); // Output the content of each script tag
 
         // Check if the content contains "lastActiveOrg"
@@ -94,10 +129,13 @@ function extractSnippet(startIndex, endIndex) {
 }
 
 // Main export function
-async function exportConversation() {
+async function exportConversation(): Promise<void> {
     try {
         // Get chat UUID from URL
         const chatId = window.location.pathname.split('/').pop();
+        if (!chatId) {
+            throw new Error('Could not find chat ID in URL');
+        }
         console.log('Chat UUID:', chatId);
 
         // Extract org ID using the new parsing logic
@@ -116,7 +154,7 @@ async function exportConversation() {
             throw new Error(`Failed to fetch conversation data: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data: ConversationData = await response.json();
         
         // Format and download the conversation
         const formatted = formatConversation(data, config);
@@ -124,10 +162,10 @@ async function exportConversation() {
         
         console.log('Export completed successfully!');
     } catch (error) {
-        console.error('Error exporting chat:', error);
-        alert('Error exporting chat: ' + error.message);
+        console.error('Error exporting chat:', error instanceof Error ? error.message : 'Unknown error');
+        alert('Error exporting chat: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
 }
 
 // Run the export
-exportConversation();
+exportConversation(); 
