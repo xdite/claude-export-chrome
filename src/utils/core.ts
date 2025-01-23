@@ -2,7 +2,7 @@
 interface Config {
     includeTimestamps: boolean;
     includeFileContent: boolean;
-    exportFormat: 'readable' | 'json';
+    exportFormat: 'readable' | 'json' | 'markdown';
 }
 
 interface Sender {
@@ -35,7 +35,7 @@ interface ConversationData {
 const config: Config = {
     includeTimestamps: true,
     includeFileContent: true,
-    exportFormat: 'readable'
+    exportFormat: 'markdown'
 };
 
 // Format a readable timestamp
@@ -61,7 +61,7 @@ function formatMessage(message: Message, config: Config): string {
     });
     
     // Add file content if present and enabled
-    if (config.includeFileContent && message.attachments?.length > 0) {
+    if (config.includeFileContent && message.attachments && message.attachments.length > 0) {
         message.attachments.forEach(attachment => {
             if (attachment.extracted_content) {
                 formatted += '\n\n[Attached File Content]:\n' + attachment.extracted_content;
@@ -72,10 +72,49 @@ function formatMessage(message: Message, config: Config): string {
     return formatted + '\n\n';
 }
 
+// Format a single message in markdown format
+function formatMessageMarkdown(message: Message): string {
+    let formatted = '';
+    
+    if (config.includeTimestamps) {
+        formatted += `> ${formatTimestamp(message.created_at)}\n\n`;
+    }
+    
+    const sender = message.sender.charAt(0).toUpperCase() + message.sender.slice(1);
+    formatted += `**${sender}**: `;
+    
+    message.content.forEach(content => {
+        if (content.type === 'text' && content.text) {
+            formatted += content.text;
+        }
+    });
+    
+    if (config.includeFileContent && message.attachments && message.attachments.length > 0) {
+        message.attachments.forEach(attachment => {
+            if (attachment.extracted_content) {
+                formatted += '\n\n```\n' + attachment.extracted_content + '\n```';
+            }
+        });
+    }
+    
+    return formatted + '\n\n---\n\n';
+}
+
 // Format the entire conversation
 function formatConversation(data: ConversationData, config: Config): string {
     if (config.exportFormat === 'json') {
         return JSON.stringify(data, null, 2);
+    }
+    
+    if (config.exportFormat === 'markdown') {
+        let output = `# Claude Chat Export\n\n`;
+        output += `*Exported at: ${formatTimestamp(data.created_at)}*\n\n---\n\n`;
+        
+        data.chat_messages.forEach(message => {
+            output += formatMessageMarkdown(message);
+        });
+        
+        return output;
     }
 
     let output = 'Claude Chat Export\n';
@@ -89,13 +128,14 @@ function formatConversation(data: ConversationData, config: Config): string {
 }
 
 // Download the formatted content
-function downloadContent(content: string, format: 'json' | 'readable'): void {
+function downloadContent(content: string, format: 'json' | 'readable' | 'markdown'): void {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const extension = format === 'json' ? 'json' : format === 'markdown' ? 'md' : 'txt';
     a.href = url;
-    a.download = `claude-chat-${timestamp}.${format === 'json' ? 'json' : 'txt'}`;
+    a.download = `claude-chat-${timestamp}.${extension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -168,4 +208,4 @@ async function exportConversation(): Promise<void> {
 }
 
 // Run the export
-exportConversation(); 
+export { exportConversation }; 

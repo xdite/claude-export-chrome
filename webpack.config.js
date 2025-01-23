@@ -1,36 +1,33 @@
 const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
-const webpack = require('webpack');
 
 module.exports = {
-  mode: 'development',
   entry: {
     background: './src/background/background.ts',
     content: './src/content/content.ts'
   },
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: '[name].js'
-  },
+  mode: 'production',
   module: {
     rules: [
       {
-        test: /\.tsx?$/,
+        test: /\.ts$/,
         use: 'ts-loader',
         exclude: /node_modules/
       }
     ]
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js']
+    extensions: ['.ts', '.js']
+  },
+  output: {
+    filename: '[name].js',
+    path: path.resolve(__dirname, 'dist')
   },
   plugins: [
     new CopyPlugin({
       patterns: [
-        // 暂时注释掉 public 目录的复制
-        // { from: 'public', to: '.' },
-        {
-          from: 'src/manifest.ts',
+        { 
+          from: './src/manifest.ts',
           to: 'manifest.json',
           transform: (content) => {
             const manifest = require('./src/manifest.ts').default;
