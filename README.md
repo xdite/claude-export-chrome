@@ -7,12 +7,13 @@
 - 將 Claude.ai 對話匯出成 Markdown 格式
 - 直接在 claude.ai 網站上使用
 - 一鍵匯出功能
+- 支援匯出 Artifacts
 
 ## 安裝方式
 
 1. 複製專案：
 ```bash
-git clone [your-repository-url]
+git clone https://github.com/xdite/claude-export-chrome
 cd claude-export-chrome
 ```
 
@@ -53,4 +54,4 @@ yarn watch
 
 ## 授權條款
 
-[Your chosen license] 
+MIT License 
