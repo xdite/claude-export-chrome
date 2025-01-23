@@ -27,7 +27,8 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { from: 'public', to: '.' },
+        // 暂时注释掉 public 目录的复制
+        // { from: 'public', to: '.' },
         {
           from: 'src/manifest.ts',
           to: 'manifest.json',
